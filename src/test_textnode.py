@@ -1,52 +1,33 @@
 import unittest
-from htmlnode import HTMLNode
+
+from textnode import TextNode, TextType
 
 
-class TestHTMLNode(unittest.TestCase):
-    def test_to_html_props(self):
-        node = HTMLNode(
-            "div",
-            "Hello, world!",
-            None,
-            {"class": "greeting", "href": "https://boot.dev"},
-        )
-        self.assertEqual(
-            node.props_to_html(),
-            ' class="greeting" href="https://boot.dev"',
-        )
+class TestTextNode(unittest.TestCase):
+    def test_eq(self):
+        node = TextNode("This is a text node", TextType.TEXT)
+        node2 = TextNode("This is a text node", TextType.TEXT)
+        self.assertEqual(node, node2)
 
-    def test_values(self):
-        node = HTMLNode(
-            "div",
-            "I wish I could read",
-        )
-        self.assertEqual(
-            node.tag,
-            "div",
-        )
-        self.assertEqual(
-            node.value,
-            "I wish I could read",
-        )
-        self.assertEqual(
-            node.children,
-            None,
-        )
-        self.assertEqual(
-            node.props,
-            None,
-        )
+    def test_eq_false(self):
+        node = TextNode("This is a text node", TextType.TEXT)
+        node2 = TextNode("This is a text node", TextType.BOLD)
+        self.assertNotEqual(node, node2)
+
+    def test_eq_false2(self):
+        node = TextNode("This is a text node", TextType.TEXT)
+        node2 = TextNode("This is a text node2", TextType.TEXT)
+        self.assertNotEqual(node, node2)
+
+    def test_eq_url(self):
+        node = TextNode("This is a text node", TextType.ITALIC, "https://www.boot.dev")
+        node2 = TextNode("This is a text node", TextType.ITALIC, "https://www.boot.dev")
+        self.assertEqual(node, node2)
 
     def test_repr(self):
-        node = HTMLNode(
-            "p",
-            "What a strange world",
-            None,
-            {"class": "primary"},
-        )
+        node = TextNode("This is a text node", TextType.TEXT, "https://www.boot.dev")
         self.assertEqual(
-            node.__repr__(),
-            "HTMLNode(p, What a strange world, children: None, {'class': 'primary'})",
+            "TextNode(This is a text node, text, https://www.boot.dev)", repr(node)
         )
 
 
