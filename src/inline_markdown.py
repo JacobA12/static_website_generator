@@ -37,9 +37,47 @@ def extract_markdown_links(text):
 
 
 def split_nodes_images(old_nodes):
-    
-    raise NotImplementedError
+    final = []
+    for node in old_nodes:
+        # Extract markdown images from the text
+        extracted_image_nodes = extract_markdown_images(node.text)
+
+        last_index = 0  # Track where the last split leaves off
+        for image_alt, image_link in extracted_image_nodes:
+            # Split the text on the current image markdown
+            sections = node.text.split(f"![{image_alt}]({image_link})", 1)
+            # Create and append TextNode for the text before the image, if it exists
+            if sections[0]:
+                final.append(TextNode(sections[0], TextType.TEXT))
+            # Create and append the TextNode for the image
+            final.append(TextNode(f"![{image_alt}]({image_link})", TextType.IMAGE))
+
+            # Update the node text to sections[1] to remove processed part
+            node.text = sections[1]
+
+        # Append any remaining text in node
+        if node.text:
+            final.append(TextNode(node.text, TextType.TEXT))
+
+    return final
 
 
 def split_nodes_link(old_nodes):
-    raise NotImplementedError
+    final = []
+    for node in old_nodes:
+        extracted_link_nodes = extract_markdown_links(node.text)
+
+        for link_alt, url in extracted_link_nodes:
+            sections = node.text.split(f"[{link_alt}]({url})", 1)
+            if sections[0]:
+                final.append(TextNode(sections[0], TextType.TEXT))
+
+            # Create the TextNode for the link with the correct representation
+            final.append(TextNode(link_alt, TextType.LINK, url))
+
+            node.text = sections[1]
+
+        if node.text:
+            final.append(TextNode(node.text, TextType.TEXT))
+
+    return final

@@ -1,6 +1,6 @@
 import unittest
 from textnode import TextNode, TextType
-from inline_markdown import split_nodes_delimiter
+from inline_markdown import split_nodes_delimiter, split_nodes_link, split_nodes_images
 
 
 class TestSplitNodesDelimiter(unittest.TestCase):
@@ -46,6 +46,24 @@ class TestSplitNodesDelimiter(unittest.TestCase):
         node = TextNode("This is text with an `unmatched code block", TextType.TEXT)
         with self.assertRaises(ValueError):
             split_nodes_delimiter([node], "`", TextType.CODE)
+
+    def test_split_nodes_link(self):
+        node = TextNode("This is a [link](https://www.example.com)", TextType.TEXT)
+        new_nodes = split_nodes_link([node])
+        expected = [
+            TextNode("This is a ", TextType.TEXT),
+            TextNode("link", TextType.LINK, "https://www.example.com"),
+        ]
+        self.assertEqual(new_nodes, expected)
+
+    def test_split_nodes_images(self):
+        node = TextNode("This is an ![image](https://www.example.com/image.png)", TextType.TEXT)
+        new_nodes = split_nodes_images([node])
+        expected = [
+            TextNode("This is an ", TextType.TEXT),
+            TextNode("image", TextType.IMAGE, "https://www.example.com/image.png"),
+        ]
+        self.assertEqual(new_nodes, expected)
 
 
 if __name__ == "__main__":
