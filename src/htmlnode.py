@@ -31,7 +31,7 @@ class LeafNode(HTMLNode):
             return self.value
         if self.tag is "img":
             return f"<{self.tag}{self.props_to_html()} />{self.value}"
-            
+
         return f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
 
     def __repr__(self):
@@ -57,3 +57,6 @@ class ParentNode(HTMLNode):
             final += child
         final += f"</{self.tag}>"
         return final
+
+    def add_child(self, child):
+        self.children.append(child)
