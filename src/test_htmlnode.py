@@ -1,106 +1,100 @@
-import unittest
-from htmlnode import LeafNode, ParentNode, HTMLNode
+import re
+
+from textnode import TextNode, TextType
 
 
-class TestHTMLNode(unittest.TestCase):
-    def test_to_html_props(self):
-        node = HTMLNode(
-            "div",
-            "Hello, world!",
-            None,
-            {"class": "greeting", "href": "https://boot.dev"},
-        )
-        self.assertEqual(
-            node.props_to_html(),
-            ' class="greeting" href="https://boot.dev"',
-        )
-
-    def test_values(self):
-        node = HTMLNode(
-            "div",
-            "I wish I could read",
-        )
-        self.assertEqual(
-            node.tag,
-            "div",
-        )
-        self.assertEqual(
-            node.value,
-            "I wish I could read",
-        )
-        self.assertEqual(
-            node.children,
-            None,
-        )
-        self.assertEqual(
-            node.props,
-            None,
-        )
-
-    def test_repr(self):
-        node = HTMLNode(
-            "p",
-            "What a strange world",
-            None,
-            {"class": "primary"},
-        )
-        self.assertEqual(
-            node.__repr__(),
-            "HTMLNode(p, What a strange world, children: None, {'class': 'primary'})",
-        )
-
-    def test_to_html_no_children(self):
-        node = LeafNode("p", "Hello, world!")
-        self.assertEqual(node.to_html(), "<p>Hello, world!</p>")
-
-    def test_to_html_no_tag(self):
-        node = LeafNode(None, "Hello, world!")
-        self.assertEqual(node.to_html(), "Hello, world!")
-
-    def test_to_html_with_children(self):
-        child_node = LeafNode("span", "child")
-        parent_node = ParentNode("div", [child_node])
-        self.assertEqual(parent_node.to_html(), "<div><span>child</span></div>")
-
-    def test_to_html_with_grandchildren(self):
-        grandchild_node = LeafNode("b", "grandchild")
-        child_node = ParentNode("span", [grandchild_node])
-        parent_node = ParentNode("div", [child_node])
-        self.assertEqual(
-            parent_node.to_html(),
-            "<div><span><b>grandchild</b></span></div>",
-        )
-
-    def test_to_html_many_children(self):
-        node = ParentNode(
-            "p",
-            [
-                LeafNode("b", "Bold text"),
-                LeafNode(None, "Normal text"),
-                LeafNode("i", "italic text"),
-                LeafNode(None, "Normal text"),
-            ],
-        )
-        self.assertEqual(
-            node.to_html(),
-            "<p><b>Bold text</b>Normal text<i>italic text</i>Normal text</p>",
-        )
-
-    def test_headings(self):
-        node = ParentNode(
-            "h2",
-            [
-                LeafNode("b", "Bold text"),
-                LeafNode(None, "Normal text"),
-                LeafNode("i", "italic text"),
-                LeafNode(None, "Normal text"),
-            ],
-        )
-        self.assertEqual(
-            node.to_html(),
-            "<h2><b>Bold text</b>Normal text<i>italic text</i>Normal text</h2>",
-        )
+def text_to_textnodes(text):
+    nodes = [TextNode(text, TextType.TEXT)]
+    nodes = split_nodes_delimiter(nodes, "**", TextType.BOLD)
+    nodes = split_nodes_delimiter(nodes, "*", TextType.ITALIC)
+    nodes = split_nodes_delimiter(nodes, "`", TextType.CODE)
+    nodes = split_nodes_image(nodes)
+    nodes = split_nodes_link(nodes)
+    return nodes
 
 
-if __name__ == "__main__":
-    unittest.main()
+def split_nodes_delimiter(old_nodes, delimiter, text_type):
+    new_nodes = []
+    for old_node in old_nodes:
+        if old_node.text_type != TextType.TEXT:
+            new_nodes.append(old_node)
+            continue
+        split_nodes = []
+        sections = old_node.text.split(delimiter)
+        if len(sections) % 2 == 0:
+            raise ValueError("Invalid markdown, formatted section not closed")
+        for i in range(len(sections)):
+            if sections[i] == "":
+                continue
+            if i % 2 == 0:
+                split_nodes.append(TextNode(sections[i], TextType.TEXT))
+            else:
+                split_nodes.append(TextNode(sections[i], text_type))
+        new_nodes.extend(split_nodes)
+    return new_nodes
+
+
+def split_nodes_image(old_nodes):
+    new_nodes = []
+    for old_node in old_nodes:
+        if old_node.text_type != TextType.TEXT:
+            new_nodes.append(old_node)
+            continue
+        original_text = old_node.text
+        images = extract_markdown_images(original_text)
+        if len(images) == 0:
+            new_nodes.append(old_node)
+            continue
+        for image in images:
+            sections = original_text.split(f"![{image[0]}]({image[1]})", 1)
+            if len(sections) != 2:
+                raise ValueError("Invalid markdown, image section not closed")
+            if sections[0] != "":
+                new_nodes.append(TextNode(sections[0], TextType.TEXT))
+            new_nodes.append(
+                TextNode(
+                    image[0],
+                    TextType.IMAGE,
+                    image[1],
+                )
+            )
+            original_text = sections[1]
+        if original_text != "":
+            new_nodes.append(TextNode(original_text, TextType.TEXT))
+    return new_nodes
+
+
+def split_nodes_link(old_nodes):
+    new_nodes = []
+    for old_node in old_nodes:
+        if old_node.text_type != TextType.TEXT:
+            new_nodes.append(old_node)
+            continue
+        original_text = old_node.text
+        links = extract_markdown_links(original_text)
+        if len(links) == 0:
+            new_nodes.append(old_node)
+            continue
+        for link in links:
+            sections = original_text.split(f"[{link[0]}]({link[1]})", 1)
+            if len(sections) != 2:
+                raise ValueError("Invalid markdown, link section not closed")
+            if sections[0] != "":
+                new_nodes.append(TextNode(sections[0], TextType.TEXT))
+            new_nodes.append(TextNode(link[0], TextType.LINK, link[1]))
+            original_text = sections[1]
+        if original_text != "":
+            new_nodes.append(TextNode(original_text, TextType.TEXT))
+    return new_nodes
+
+
+def extract_markdown_images(text):
+    pattern = r"!\[([^\[\]]*)\]\(([^\(\)]*)\)"
+    matches = re.findall(pattern, text)
+    return matches
+
+
+def extract_markdown_links(text):
+    pattern = r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)"
+    matches = re.findall(pattern, text)
+    return matches
