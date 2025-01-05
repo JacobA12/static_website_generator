@@ -1,4 +1,4 @@
-from generate_page import *
+from gencontent import *
 import unittest
 
 
