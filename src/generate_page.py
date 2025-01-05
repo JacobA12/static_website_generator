@@ -1,4 +1,3 @@
-from markdown_to_html import *
 from htmlnode import *
 from markdown_blocks import *
 
