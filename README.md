@@ -67,5 +67,5 @@ To run the unit tests, execute the following command:
 
 ## Credit
 
-I made this project following the Boot.dev cirriculum
+I made this project following the Boot.dev curriculum
 https://github.com/bootdotdev/curriculum
